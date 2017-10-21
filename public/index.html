@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="ie=edge">
+		<title>ele</title>
+		<style>
+			body {
+				padding: 0;
+				margin: 0;
+			}
+
+			#wrap {
+				width: 100%;
+				text-align: center;
+			}
+
+			#title {
+				font: 24px/1.5em Microsoft Yahei;
+				color: #666;
+			}
+
+			#text,
+			#curl {
+				width: 80%;
+				border: 1px solid #ccc;
+				outline: 1px solid #ccc;
+			}
+
+			#start-btn,
+			#curl-btn {
+				padding: 5px 20px;
+				border: 1px solid #ccc;
+				border-radius: 2px;
+				outline: none;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="wrap">
+			<p id="title">饿了么红包自动领取</p>
+			<textarea id="curl" rows="20" placeholder="输入curl"></textarea>
+			<br>
+			<textarea id="text" rows="5" placeholder="输入红包链接地址"></textarea>
+			<br>
+			<br>
+			<button id="curl-btn">设置</button>
+			<button id="start-btn">开始</button>
+			<div id=log></div>
+		</div>
+		<script>
+			(function () {
+				var btn = document.getElementById('start-btn');
+				var curlBtn = document.getElementById('curl-btn');
+				var logContainer = document.getElementById('log');
+				var timer;
+				var time = 20000;// 请求频率20s一次，太快可能出现异常
+				var ajax = function (url, str, cbfn) {
+					var obj = {
+						str: str
+					}
+					var request = new XMLHttpRequest();
+					request.open('POST', url);
+					request.setRequestHeader("Content-type", "application/json;charset=utf-8");
+					request.send(JSON.stringify(obj));
+					request.onreadystatechange = function () {
+						if (request.readyState === 4) {
+							if (request.status === 200) {
+								cbfn(request.responseText)
+							} else {
+								alert("发生错误：" + request.status);
+							}
+						}
+					}
+				}
+				var getMax = function () {
+					ajax('/start', '', function (d) {
+						alert(d)
+					})
+				}
+				btn.onclick = function () {
+					var type = this.innerText;
+					var _this = this;
+					var path = document.getElementById('text').value;
+					if (type == '开始') {
+						var sn = (function () {
+							var r;
+							var from = path.indexOf('&sn=');
+							var to = path.indexOf('&theme_id');
+							if (from !== -1) {
+								r = path.slice(from + 4, to)
+							}
+							return r;
+						})()
+						var luckyNum = (function () {
+							var r;
+							var from = path.indexOf('lucky_number=');
+							var to = path.indexOf('&track_id');
+							if (from !== -1) {
+								r = path.slice(from + 13, to)
+							}
+							return r * 1;
+						})()
+						console.log(luckyNum)
+						if (sn) {
+							this.innerText = '停止'
+							var getNum = function () {
+								ajax('/getEleNum', sn, function (d) {
+									if (d == luckyNum - 1) {
+										clearInterval(timer)
+										_this.innerText = '开始';
+										getMax();
+									} else if (d >= luckyNum) {
+										clearInterval(timer)
+										_this.innerText = '开始';
+										alert('最大的已经没了')
+									} else {
+										var log = document.createElement('p')
+										var date = new Date();
+										log.innerText = (date.getHours() + ':' + date.getMinutes() + '当前领取人数为:' + d);
+										logContainer.appendChild(log)
+									}
+								})
+							}
+							getNum()
+							timer = setInterval(getNum, time)
+						} else {
+							alert('输入地址不正确!')
+						}
+					} else {
+						this.innerText = '开始';
+						clearInterval(timer);
+					}
+				}
+				curlBtn.onclick = function () {
+					var curlStr = document.getElementById('curl').value;
+					if (curlStr) {
+						ajax('/curl', curlStr, function (d) {
+							alert(d);
+						})
+					} else {
+						alert('curl不能为空')
+					}
+				}
+			})()
+		</script>
+	</body>
+</html>
